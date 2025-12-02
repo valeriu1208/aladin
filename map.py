@@ -11,6 +11,7 @@ import geopy.distance
 import networkx as nx
 import folium
 import time
+from networkx.algorithms.simple_paths import shortest_simple_paths
 
 st.title("geolocation radar map ")
 st.subheader(f"Welcome to the Map Page {st.user.name}!")
@@ -18,7 +19,7 @@ st.write(f"You are logged in as {st.session_state.role}.")
 st.write("select a map type from the dropdown below:")
 types_of_maps = [" ","OpenStreetMap", "Esri.WorldImagery", "Hybrid", "Terrain"]
 selected_map = st.selectbox("Select a map type:", types_of_maps)
-if selected_map is selected_map == " ":
+if selected_map == " ":
     st.write("Please select a map type from the dropdown.")
 else:
     st.write(f"You selected: {selected_map}, press the button below to get your location and show it on the map.")
@@ -36,9 +37,10 @@ location1 = geocode1(f"{location['latitude']}, {location['longitude']}")
 
 lon1 = location_data[1]
 lat1 = location_data[0]
-if st.form("Where to go?"):
+with st.form("Where to go?"):
     goto_location = st.text_input("Enter a location to go to (e.g., 'Castelldefels, BCN'):")
-    if st.button("Send location to map"):
+    submit = st.form_submit_button("Send location to map")
+    if submit:
         if goto_location:
             location2 = gtcode(goto_location)
             st.write("DEBUG search string1:", repr(location2))
@@ -54,6 +56,7 @@ if st.form("Where to go?"):
             st.write(f"Your current location is: {location_data}")
             map = leafmap.Map(center=location_data, zoom=18)
             map.add_marker(location_data, popup=f"You are: {location1}" ,draggable=True)
+            map.add_marker((lat2, lon2), popup=f" {goto_location}" ,draggable=True)
             #map.add_marker(destination_data, popup=f" {goto_location}" ,draggable=True)
             #origin = (location['latitude'], location['longitude'])
             #destin = (lat2, lon2)
@@ -78,7 +81,30 @@ if st.form("Where to go?"):
             orig = ox.nearest_nodes(G,lon1, lat1)
             dest = ox.nearest_nodes(G, lon2, lat2)
             route = ox.shortest_path(G, orig, dest, weight="length")
-            route_coords = [(G.nodes[n]['y'], G.nodes[n]['x']) for n in route]
+            paths = list(ox.k_shortest_paths(G, orig, dest,k=3, weight="length"))
+            r1 = ox.shortest_path(G, orig, dest, weight="length")
+            G_copy = G.copy()
+
+            #   Add default speeds if missing
+            G_copy = ox.add_edge_speeds(G_copy, hwy_speeds=None)   
+            G_copy = ox.add_edge_travel_times(G_copy)
+            #y = nx.shortest_path_length(G_copy, orig, dest, weight="length")
+            #x = nx.shortest_path_length(G_copy, orig, dest, weight="travel_time")
+            #n1 = nx.shortest_path_length(G, orig, dest, weight="travel_time")
+            #n = nx.shortest_path_length(G, orig, dest, weight="length")
+            #st.write(f"distance in km(shortest travel time):blue [{x/1000} meters and {y/60} minutes]")
+            #st.write(f"distance in km(fast):red [{n/1000} km and {n1/60} minutes]")
+
+            # Now you can safely compute shortest travel_time path
+            r2 = ox.shortest_path(G_copy, orig, dest, weight="travel_time")
+           
+            paths = [r1,r2]
+            route_coords = []
+            for i, path in enumerate(paths[:2]):
+                route_coords.append(path)
+
+            nodes = {f"route_{i+1}": route for i, route in enumerate(route_coords)}
+            #route_coords = [(G.nodes[n]['y'], G.nodes[n]['x']) for n in route]
             with st.container():
                 st.markdown("""
                         <div style="text-align:center;">
@@ -90,14 +116,16 @@ if st.form("Where to go?"):
             for i in range(100):
                 barra.progress(i + 1)
                 time.sleep(0.001)
-            line = LineString(route_coords)
+            #line = LineString(route_coords)
             map.add_basemap(selected_map)
-            folium.PolyLine(route_coords, color="blue", weight=5).add_to(map)
+            colors = ["blue", "red"]
+            st.write(nodes)
+            for i, route in enumerate(route_coords):
+                route_latlon = [(G.nodes[n]['y'], G.nodes[n]['x']) for n in route]
+                folium.PolyLine(route_latlon, color=colors[i], weight=5, opacity=0.7).add_to(map)
             map.to_streamlit(height=600)
             cz = 100
             if cz > 0:
                 st.success("Route successfully calculated and displayed on the map!")
     else:
         st.write("Click the button to send the location to the map.")
-else:
-    st.error("Please enter a location to go to.")

@@ -1,0 +1,10 @@
+streamlit
+requests
+leafmap
+streamlit-geolocation
+geopy
+osmnx
+scikit-learn
+shapely
+networkx
+folium
