@@ -94,12 +94,19 @@ def create_map(df):
 # --------------------------------------------------
 # EJECUCIÓN PRINCIPAL
 # --------------------------------------------------
-r = st.button("Load")
-if r:
-    response = requests.post(FASTAPI_URL, timeout=10)
-s = st.button("reload")
-if s:
-    response = requests.post(FASTAPI_URL1, timeout=10)
+st.subheader("Data Actions")
+col1, col2 , col3 = st.columns(3)
+with st.form("Load or reload"):
+    with col1:
+        r = st.button("Load")
+        if r:
+            response = requests.post(FASTAPI_URL, timeout=10)
+            st.success("Data Load was made correctly")
+    with col2:
+        s = st.button("Reload")
+        if s:
+            response = requests.post(FASTAPI_URL1, timeout=10)
+            st.success("Data was Reloaded correctly")
 df = load_and_prepare_data()
 model, scaler, X_test, y_test = train_model(df)
 

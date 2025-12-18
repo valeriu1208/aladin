@@ -59,6 +59,7 @@ def consultar_fastapi1(texto: str) -> dict:
     x,y = transformer.transform(longitud,latitud)
     return x,y
 
+
 def construir_prompt_groq(resultado: dict) -> str:
     return f"""
 Se han analizado datos reales de accidentes de tráfico para una zona concreta.
